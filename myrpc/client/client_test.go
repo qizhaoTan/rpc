@@ -168,6 +168,12 @@ func startMockServer(t *testing.T, handler func(net.Conn)) net.Listener {
 			require.NoError(t, err)
 			handler(conn)
 		}()
+	} else {
+		go func() {
+			conn, err := listener.Accept()
+			require.NoError(t, err)
+			conn.Close()
+		}()
 	}
 
 	return listener
@@ -176,14 +182,15 @@ func startMockServer(t *testing.T, handler func(net.Conn)) net.Listener {
 func mockHelloHandle(conn net.Conn) {
 	// 读取请求（暂时简化）
 	buf := make([]byte, 1024)
-	conn.Read(buf)
+	n, _ := conn.Read(buf)
+	buf = buf[:n]
 
 	var apply pb.ApplyHello
 	json.Unmarshal(buf, &apply)
 
-	// 写入响应（JSON格式）
-	resp := fmt.Sprintf(`{"msg":"Hello, %s!"}`, apply.Name)
-	conn.Write([]byte(resp))
+	reply := &pb.ReplyHello{Msg: fmt.Sprintf("Hello, %s!", apply.Name)}
+	resp, _ := json.Marshal(reply)
+	conn.Write(resp)
 	conn.Close()
 }
 
@@ -252,7 +259,7 @@ func TestClient_Invoke(t *testing.T) {
 				assert.NoError(t, err)
 				// 验证响应被正确填充
 				if reply, ok := tt.reply.(*pb.ReplyHello); ok {
-					assert.Equal(t, "Hello, World!", reply.Msg)
+					assert.Equal(t, tt.want, reply.Msg)
 				}
 			}
 		})

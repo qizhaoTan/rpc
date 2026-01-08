@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
+	"myrpc/pb"
 	"net"
 )
 
@@ -12,8 +14,29 @@ type Client struct {
 }
 
 func (c *Client) Invoke(ctx context.Context, method string, args any, reply any) error {
-	//TODO implement me
-	panic("implement me")
+	if method == "" {
+		return errors.New("空方法名")
+	}
+
+	if args == nil {
+		return errors.New("空请求")
+	}
+
+	apply := args.(*pb.ApplyHello)
+	data, _ := json.Marshal(apply)
+	if _, err := c.conn.Write(data); err != nil {
+		return err
+	}
+
+	buf := make([]byte, 1024)
+	n, err := c.conn.Read(buf)
+	if err != nil {
+		return err
+	}
+
+	buf = buf[:n]
+	json.Unmarshal(buf, reply)
+	return nil
 }
 
 func (c *Client) Close() error {
