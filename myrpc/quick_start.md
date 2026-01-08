@@ -1,1 +1,2 @@
 1. 得先有个Client，先实现TestNewClient测试用例，完成NewClient实现通过测试用例
+2. 补充TestNewClient关于连接建立的测试，完成NewClient实现通过测试用例

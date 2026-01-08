@@ -1,9 +1,25 @@
 package main
 
-import "testing"
-import "github.com/stretchr/testify/assert"
+import (
+	"net"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// newTestServer 创建一个简单的测试 TCP 服务器
+func newTestServer(t *testing.T, addr string) net.Listener {
+	listener, err := net.Listen("tcp", addr)
+	require.NoError(t, err)
+	return listener
+}
 
 func TestNewClient(t *testing.T) {
+	// 启动测试服务器
+	server := newTestServer(t, "localhost:50051")
+	defer server.Close()
+
 	tests := []struct {
 		name    string
 		network string
@@ -11,10 +27,22 @@ func TestNewClient(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "创建TCP客户端-成功",
+			name:    "成功连接到服务器",
 			network: "tcp",
-			addr:    "localhost:8080",
+			addr:    server.Addr().String(), // 使用测试服务器的实际地址
 			wantErr: false,
+		},
+		{
+			name:    "连接不存在的服务器-失败",
+			network: "tcp",
+			addr:    "localhost:50052", // 假设这个端口没有服务
+			wantErr: true,
+		},
+		{
+			name:    "无效地址-失败",
+			network: "tcp",
+			addr:    "invalid-address:abc",
+			wantErr: true,
 		},
 		{
 			name:    "空地址-失败",
@@ -25,7 +53,7 @@ func TestNewClient(t *testing.T) {
 		{
 			name:    "不支持的协议-失败",
 			network: "udp",
-			addr:    "localhost:8080",
+			addr:    server.Addr().String(),
 			wantErr: true,
 		},
 	}
@@ -40,6 +68,7 @@ func TestNewClient(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, client)
+				assert.NotNil(t, client.conn) // 验证连接已建立
 			}
 		})
 	}

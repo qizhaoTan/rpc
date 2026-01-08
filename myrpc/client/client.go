@@ -1,8 +1,12 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"net"
+)
 
 type Client struct {
+	conn net.Conn
 }
 
 func NewClient(network, targetAddr string) (*Client, error) {
@@ -14,7 +18,15 @@ func NewClient(network, targetAddr string) (*Client, error) {
 		return nil, errors.New("空地址")
 	}
 
-	return &Client{}, nil
+	conn, err := net.Dial(network, targetAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &Client{
+		conn: conn,
+	}
+	return c, nil
 }
 
 func main() {
