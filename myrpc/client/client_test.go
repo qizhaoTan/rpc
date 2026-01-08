@@ -1,6 +1,7 @@
 package main
 
 import (
+	"myrpc/pb"
 	"net"
 	"testing"
 
@@ -70,6 +71,46 @@ func TestNewClient(t *testing.T) {
 				assert.NotNil(t, client)
 				assert.NotNil(t, client.conn) // 验证连接已建立
 			}
+		})
+	}
+}
+
+// createTestClient 创建测试用的 Client
+func createTestClient(t *testing.T) *Client {
+	// 启动测试服务器
+	server, _ := net.Listen("tcp", "localhost:0")
+	go func() {
+		for {
+			conn, _ := server.Accept()
+			conn.Close()
+		}
+	}()
+
+	client, err := NewClient("tcp", server.Addr().String())
+	require.NoError(t, err)
+	return client
+}
+
+func TestNewHelloClient(t *testing.T) {
+	tests := []struct {
+		name    string
+		client  *Client
+		wantErr bool
+	}{
+		{
+			name:   "成功创建HelloClient",
+			client: createTestClient(t), // 创建测试用的 Client
+		},
+		{
+			name:   "nil client - 也成功",
+			client: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			helloClient := pb.NewHelloClient(tt.client)
+			require.NotNil(t, helloClient)
 		})
 	}
 }

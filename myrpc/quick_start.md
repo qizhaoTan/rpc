@@ -1,2 +1,3 @@
-1. 得先有个Client，先实现TestNewClient测试用例，完成NewClient实现通过测试用例
-2. 补充TestNewClient关于连接建立的测试，完成NewClient实现通过测试用例
+1. 得先有个Client，先实现TestNewClient测试用例，实现并通过测试用例
+2. 补充TestNewClient关于连接建立的测试，实现并通过测试用例
+3. 模拟grpc生成的HelloClient，实现一个TestNewHelloClient测试用例，实现并通过测试用例

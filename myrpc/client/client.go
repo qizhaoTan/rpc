@@ -2,11 +2,16 @@ package main
 
 import (
 	"errors"
+	"log"
 	"net"
 )
 
 type Client struct {
 	conn net.Conn
+}
+
+func (c *Client) Close() error {
+	return c.conn.Close()
 }
 
 func NewClient(network, targetAddr string) (*Client, error) {
@@ -30,5 +35,10 @@ func NewClient(network, targetAddr string) (*Client, error) {
 }
 
 func main() {
-
+	// 连接到 gRPC 服务器
+	client, err := NewClient("tcp", "localhost:50051")
+	if err != nil {
+		log.Fatalf("无法连接到服务器: %v", err)
+	}
+	defer client.Close()
 }
