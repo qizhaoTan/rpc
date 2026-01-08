@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"myrpc/pb"
 	"net"
 	"testing"
@@ -111,6 +112,44 @@ func TestNewHelloClient(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			helloClient := pb.NewHelloClient(tt.client)
 			require.NotNil(t, helloClient)
+		})
+	}
+}
+
+func TestHelloClient_Hello(t *testing.T) {
+	// 注意：这个测试暂时不能完整测试，因为还没有实现通信协议
+	// 所以第一步只测试方法能够调用（不测试返回值）
+
+	client := createTestClient(t)
+	helloClient := pb.NewHelloClient(client)
+
+	tests := []struct {
+		name    string
+		ctx     context.Context
+		req     *pb.ApplyHello
+		wantErr bool
+	}{
+		{
+			name:    "调用Hello方法",
+			ctx:     context.Background(),
+			req:     &pb.ApplyHello{Name: "World"},
+			wantErr: false, // 暂时可能返回错误，但至少方法能调用
+		},
+		{
+			name:    "nil请求",
+			ctx:     context.Background(),
+			req:     nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := helloClient.Hello(tt.ctx, tt.req)
+
+			// 暂时不验证返回值，只要能调用就行
+			_ = resp
+			_ = err
 		})
 	}
 }
