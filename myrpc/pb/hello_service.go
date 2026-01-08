@@ -35,3 +35,7 @@ func NewHelloClient(c ClientConnInterface) *HelloClient {
 	}
 	return helloClient
 }
+
+type IHelloService interface {
+	Hello(ctx context.Context, apply *ApplyHello) (*ReplyHello, error)
+}
