@@ -7,6 +7,7 @@ import (
 	"log"
 	"myrpc/pb"
 	"net"
+	"reflect"
 )
 
 type Client struct {
@@ -19,6 +20,10 @@ func (c *Client) Invoke(ctx context.Context, method string, args any, reply any)
 	}
 
 	if args == nil {
+		return errors.New("空请求")
+	}
+
+	if reflect.ValueOf(args).IsNil() {
 		return errors.New("空请求")
 	}
 

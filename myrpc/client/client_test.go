@@ -122,37 +122,52 @@ func TestHelloClient_Hello(t *testing.T) {
 	// 注意：这个测试暂时不能完整测试，因为还没有实现通信协议
 	// 所以第一步只测试方法能够调用（不测试返回值）
 
-	client := createTestClient(t)
-	helloClient := pb.NewHelloClient(client)
-
 	tests := []struct {
-		name    string
-		ctx     context.Context
-		apply   *pb.ApplyHello
-		reply   *pb.ReplyHello
-		wantErr bool
+		name           string
+		ctx            context.Context
+		apply          *pb.ApplyHello
+		reply          *pb.ReplyHello
+		wantErr        bool
+		mockConnHandle func(conn net.Conn)
 	}{
 		{
-			name:    "调用Hello方法",
-			ctx:     context.Background(),
-			apply:   &pb.ApplyHello{Name: "World"},
-			wantErr: false, // 暂时可能返回错误，但至少方法能调用
+			name:           "调用Hello方法",
+			ctx:            context.Background(),
+			apply:          &pb.ApplyHello{Name: "World"},
+			reply:          &pb.ReplyHello{Msg: "Hello, World!"},
+			wantErr:        false,
+			mockConnHandle: mockHelloHandle,
 		},
 		{
-			name:    "nil请求",
-			ctx:     context.Background(),
-			apply:   nil,
-			wantErr: true,
+			name:           "nil请求",
+			ctx:            context.Background(),
+			apply:          nil,
+			wantErr:        true,
+			mockConnHandle: mockHelloHandle,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// 启动模拟服务器
+			server := startMockServer(t, tt.mockConnHandle)
+			defer server.Close()
+
+			// 创建客户端
+			client, err := NewClient("tcp", server.Addr().String())
+			require.NoError(t, err)
+			defer client.Close()
+
+			helloClient := pb.NewHelloClient(client)
+
 			resp, err := helloClient.Hello(tt.ctx, tt.apply)
 
-			// 暂时不验证返回值，只要能调用就行
-			_ = resp
-			_ = err
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.reply, resp)
+			}
 		})
 	}
 }
