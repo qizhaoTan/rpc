@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"myrpc/pb"
 	"net"
 	"testing"
@@ -126,30 +128,133 @@ func TestHelloClient_Hello(t *testing.T) {
 	tests := []struct {
 		name    string
 		ctx     context.Context
-		req     *pb.ApplyHello
+		apply   *pb.ApplyHello
+		reply   *pb.ReplyHello
 		wantErr bool
 	}{
 		{
 			name:    "调用Hello方法",
 			ctx:     context.Background(),
-			req:     &pb.ApplyHello{Name: "World"},
+			apply:   &pb.ApplyHello{Name: "World"},
 			wantErr: false, // 暂时可能返回错误，但至少方法能调用
 		},
 		{
 			name:    "nil请求",
 			ctx:     context.Background(),
-			req:     nil,
+			apply:   nil,
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := helloClient.Hello(tt.ctx, tt.req)
+			resp, err := helloClient.Hello(tt.ctx, tt.apply)
 
 			// 暂时不验证返回值，只要能调用就行
 			_ = resp
 			_ = err
+		})
+	}
+}
+
+// startMockServer 启动一个模拟服务器
+func startMockServer(t *testing.T, handler func(net.Conn)) net.Listener {
+	listener, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
+
+	if handler != nil {
+		go func() {
+			conn, err := listener.Accept()
+			require.NoError(t, err)
+			handler(conn)
+		}()
+	}
+
+	return listener
+}
+
+func mockHelloHandle(conn net.Conn) {
+	// 读取请求（暂时简化）
+	buf := make([]byte, 1024)
+	conn.Read(buf)
+
+	var apply pb.ApplyHello
+	json.Unmarshal(buf, &apply)
+
+	// 写入响应（JSON格式）
+	resp := fmt.Sprintf(`{"msg":"Hello, %s!"}`, apply.Name)
+	conn.Write([]byte(resp))
+	conn.Close()
+}
+
+func TestClient_Invoke(t *testing.T) {
+	tests := []struct {
+		name           string
+		method         string
+		apply          interface{}
+		reply          interface{}
+		wantErr        bool
+		want           string
+		mockConnHandle func(conn net.Conn)
+	}{
+		{
+			name:   "成功调用Hello方法",
+			method: "/service.Hello/Hello",
+			apply: &pb.ApplyHello{
+				Name: "World",
+			},
+			reply:          &pb.ReplyHello{},
+			wantErr:        false,
+			want:           "Hello, World!",
+			mockConnHandle: mockHelloHandle,
+		},
+		{
+			name:    "空方法名-失败",
+			method:  "",
+			apply:   &pb.ApplyHello{Name: "Test"},
+			reply:   &pb.ReplyHello{},
+			wantErr: true,
+		},
+		{
+			name:    "nil请求-失败",
+			method:  "/service.Hello/Hello",
+			apply:   nil,
+			reply:   &pb.ReplyHello{},
+			wantErr: true,
+		},
+		{
+			name:    "nil响应-失败",
+			method:  "/service.Hello/Hello",
+			apply:   &pb.ApplyHello{Name: "Test"},
+			reply:   nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// 启动模拟服务器
+			server := startMockServer(t, tt.mockConnHandle)
+			defer server.Close()
+
+			// 创建客户端
+			client, err := NewClient("tcp", server.Addr().String())
+			require.NoError(t, err)
+			defer client.Close()
+
+			// 调用 Invoke
+			err = client.Invoke(context.Background(), tt.method, tt.apply, tt.reply)
+
+			// 验证
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				// 验证响应被正确填充
+				if reply, ok := tt.reply.(*pb.ReplyHello); ok {
+					assert.Equal(t, "Hello, World!", reply.Msg)
+				}
+			}
 		})
 	}
 }

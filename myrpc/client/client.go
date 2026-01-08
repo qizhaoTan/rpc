@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net"
@@ -8,6 +9,11 @@ import (
 
 type Client struct {
 	conn net.Conn
+}
+
+func (c *Client) Invoke(ctx context.Context, method string, args any, reply any) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (c *Client) Close() error {
