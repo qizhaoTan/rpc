@@ -10,6 +10,7 @@ import (
 
 type Server struct {
 	listener net.Listener
+	services map[string]any
 }
 
 func NewServer(network, targetAddr string) (*Server, error) {
@@ -29,11 +30,20 @@ func NewServer(network, targetAddr string) (*Server, error) {
 
 	server := &Server{
 		listener: listener,
+		services: make(map[string]any),
 	}
 	return server, nil
 }
 
+func (s *Server) RegisterService(serverName string, impl any) {
+	s.services[serverName] = impl
+}
+
 func (s *Server) Start() error {
+	if len(s.services) == 0 {
+		return errors.New("没有注册Services")
+	}
+
 	conn, err := s.listener.Accept()
 	if err != nil {
 		return err

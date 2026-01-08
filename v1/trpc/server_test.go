@@ -3,6 +3,7 @@ package trpc
 import (
 	"context"
 	"testing"
+	"time"
 	"v1/pb"
 
 	"github.com/stretchr/testify/assert"
@@ -100,6 +101,66 @@ func TestRegisterHelloServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pb.RegisterHelloServer(tt.server, tt.service)
+		})
+	}
+}
+
+func TestServer_Start(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupServer func(t *testing.T) *Server
+		wantErr     bool
+		testClient  bool // 是否测试客户端调用
+	}{
+		{
+			name: "成功启动服务并处理请求",
+			setupServer: func(t *testing.T) *Server {
+				s := createTestServer(t)
+				pb.RegisterHelloServer(s, &serverImpl{})
+				return s
+			},
+			wantErr:    false,
+			testClient: true,
+		},
+		{
+			name: "未注册服务-启动失败",
+			setupServer: func(t *testing.T) *Server {
+				return createTestServer(t)
+			},
+			wantErr:    true,
+			testClient: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := tt.setupServer(t)
+
+			// 在 goroutine 中启动服务
+			errChan := make(chan error, 1)
+			go func() {
+				errChan <- server.Start()
+			}()
+
+			if tt.wantErr {
+				err := <-errChan
+				assert.Error(t, err)
+			} else {
+				// 等待服务启动
+				time.Sleep(100 * time.Millisecond)
+
+				if tt.testClient {
+					// 测试客户端调用
+					client, err := NewClient("tcp", server.listener.Addr().String())
+					require.NoError(t, err)
+					defer client.Close()
+
+					helloClient := pb.NewHelloClient(client)
+					resp, err := helloClient.Hello(context.Background(), &pb.ApplyHello{Name: "Test"})
+					require.NoError(t, err)
+					assert.Equal(t, "Hello, Test!", resp.Msg)
+				}
+			}
 		})
 	}
 }

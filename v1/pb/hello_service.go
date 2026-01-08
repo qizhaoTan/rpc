@@ -13,6 +13,18 @@ type ClientConnInterface interface {
 	Invoke(ctx context.Context, method string, args any, reply any) error
 }
 
+// ServiceRegistrar wraps a single method that supports service registration. It
+// enables users to pass concrete types other than grpc.Server to the service
+// registration methods exported by the IDL generated code.
+type ServiceRegistrar interface {
+	// RegisterService registers a service and its implementation to the
+	// concrete type implementing this interface.  It may not be called
+	// once the server has started serving.
+	// desc describes the service and its methods and handlers. impl is the
+	// service implementation which is passed to the method handlers.
+	RegisterService(serverName string, impl any)
+}
+
 type ApplyHello struct {
 	Name string
 }
@@ -38,7 +50,8 @@ func NewHelloClient(c ClientConnInterface) *HelloClient {
 	return helloClient
 }
 
-func RegisterHelloServer(server any, service IHelloService) {
+func RegisterHelloServer(server ServiceRegistrar, service IHelloService) {
+	server.RegisterService("Hello", service)
 }
 
 type IHelloService interface {
