@@ -73,6 +73,7 @@ func TestRegisterHelloServer(t *testing.T) {
 		server    *Server
 		service   pb.IHelloService
 		wantErr   bool
+		wantPanic bool
 		expectNil bool
 	}{
 		{
@@ -94,12 +95,22 @@ func TestRegisterHelloServer(t *testing.T) {
 			server:    nil,
 			service:   &serverImpl{},
 			wantErr:   true,
+			wantPanic: true,
 			expectNil: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				err := recover()
+				if tt.wantPanic {
+					assert.NotNil(t, err)
+				} else {
+					assert.Nil(t, err)
+				}
+			}()
+
 			pb.RegisterHelloServer(tt.server, tt.service)
 		})
 	}
