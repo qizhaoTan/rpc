@@ -21,7 +21,7 @@ func newTestServer(t *testing.T, addr string) net.Listener {
 
 func TestNewClient(t *testing.T) {
 	// 启动测试服务器
-	server := newTestServer(t, "localhost:50051")
+	server := newTestServer(t, "localhost:0")
 	defer server.Close()
 
 	tests := []struct {
@@ -180,13 +180,17 @@ func startMockServer(t *testing.T, handler func(net.Conn)) net.Listener {
 	if handler != nil {
 		go func() {
 			conn, err := listener.Accept()
-			require.NoError(t, err)
+			if err != nil {
+				return
+			}
 			handler(conn)
 		}()
 	} else {
 		go func() {
 			conn, err := listener.Accept()
-			require.NoError(t, err)
+			if err != nil {
+				return
+			}
 			conn.Close()
 		}()
 	}

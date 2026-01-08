@@ -20,7 +20,7 @@ func TestNewServer(t *testing.T) {
 		{
 			name:    "成功创建Server",
 			network: "tcp",
-			addr:    "localhost:50051",
+			addr:    "localhost:0",
 			wantErr: false,
 		},
 		{
@@ -32,7 +32,7 @@ func TestNewServer(t *testing.T) {
 		{
 			name:    "不支持的协议-失败",
 			network: "udp",
-			addr:    "localhost:50051",
+			addr:    "localhost:0",
 			wantErr: true,
 		},
 	}
