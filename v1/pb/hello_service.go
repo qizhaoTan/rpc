@@ -2,6 +2,7 @@ package pb
 
 import (
 	"context"
+	"fmt"
 )
 
 // ClientConnInterface defines the functions clients need to perform unary and
@@ -38,16 +39,21 @@ type HelloClient struct {
 }
 
 func NewHelloClient(c ClientConnInterface) *HelloClient {
+	helloFunc := func(ctx context.Context, apply *ApplyHello) (*ReplyHello, error) {
+		var reply ReplyHello
+		if err := c.Invoke(ctx, fmt.Sprintf("%s.%s", (*HelloClient).Name(nil), "Hello"), apply, &reply); err != nil {
+			return nil, err
+		}
+		return &reply, nil
+	}
 	helloClient := &HelloClient{
-		Hello: func(ctx context.Context, apply *ApplyHello) (*ReplyHello, error) {
-			var reply ReplyHello
-			if err := c.Invoke(ctx, "Hello", apply, &reply); err != nil {
-				return nil, err
-			}
-			return &reply, nil
-		},
+		Hello: helloFunc,
 	}
 	return helloClient
+}
+
+func (s *HelloClient) Name() string {
+	return "hello_service"
 }
 
 func RegisterHelloServer(server ServiceRegistrar, service IHelloService) {

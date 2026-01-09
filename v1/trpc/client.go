@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net"
 	"reflect"
-	"v1/pb"
 )
 
 type Client struct {
@@ -46,8 +45,7 @@ func (c *Client) Invoke(ctx context.Context, method string, args any, reply any)
 		return errors.New("空请求")
 	}
 
-	apply := args.(*pb.ApplyHello)
-	data, _ := json.Marshal(apply)
+	data, _ := json.Marshal(args)
 	if _, err := c.conn.Write(data); err != nil {
 		return err
 	}
