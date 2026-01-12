@@ -60,19 +60,34 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	if len(a.Args) <= 0 {
-		return errors.New("没有传参数")
+	serviceName := a.ServiceName
+	methodName := a.MethodName
+	args := a.Args
+	reply, err := s.call(args, serviceName, methodName)
+	if err != nil {
+		return err
 	}
 
-	service, ok := s.services[a.ServiceName]
+	resp, _ := json.Marshal(reply)
+	conn.Write(resp)
+	conn.Close()
+	return err
+}
+
+func (s *Server) call(args []byte, serviceName string, methodName string) (any, error) {
+	if len(args) <= 0 {
+		return nil, errors.New("没有传参数")
+	}
+
+	service, ok := s.services[serviceName]
 	if !ok {
-		return fmt.Errorf("不存在service:%s", a.ServiceName)
+		return nil, fmt.Errorf("不存在service:%s", serviceName)
 	}
 
 	serviceValue := reflect.ValueOf(service)
-	method := serviceValue.MethodByName(a.MethodName)
+	method := serviceValue.MethodByName(methodName)
 	if !method.IsValid() {
-		return fmt.Errorf("service:%s 不存在method:%s", a.ServiceName, a.MethodName)
+		return nil, fmt.Errorf("service:%s 不存在method:%s", serviceName, methodName)
 	}
 
 	ctx := context.Background()
@@ -80,28 +95,24 @@ func (s *Server) Start() error {
 	// 约定方法签名为：func(ctx context.Context, req *ReqType) (resp any, err error)
 	methodType := method.Type()
 	if methodType.NumIn() != 2 {
-		return fmt.Errorf("service:%s method:%s 参数数量不正确", a.ServiceName, a.MethodName)
+		return nil, fmt.Errorf("service:%s method:%s 参数数量不正确", serviceName, methodName)
 	}
 
 	// 第二个参数类型（通常是 *ReqType）
 	apply := reflect.New(methodType.In(1).Elem())
-	if err := json.Unmarshal(a.Args, apply.Interface()); err != nil {
-		return err
+	if err := json.Unmarshal(args, apply.Interface()); err != nil {
+		return nil, err
 	}
 
-	args := []reflect.Value{reflect.ValueOf(ctx), apply}
-	results := method.Call(args)
+	results := method.Call([]reflect.Value{reflect.ValueOf(ctx), apply})
 	if len(results) != 2 {
-		return fmt.Errorf("service:%s method:%s Call Failed", a.ServiceName, a.MethodName)
+		return nil, fmt.Errorf("service:%s method:%s Call Failed", serviceName, methodName)
 	}
 
 	if err, ok := results[1].Interface().(error); ok && err != nil {
-		return err
+		return nil, err
 	}
 
 	reply := results[0].Interface()
-	resp, _ := json.Marshal(reply)
-	conn.Write(resp)
-	conn.Close()
-	return err
+	return reply, nil
 }
