@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"reflect"
 )
@@ -45,11 +46,21 @@ func (s *Server) Start() error {
 		return errors.New("没有注册Services")
 	}
 
-	conn, err := s.listener.Accept()
-	if err != nil {
-		return err
-	}
+	for {
+		conn, err := s.listener.Accept()
+		if err != nil {
+			return err
+		}
 
+		go func() {
+			if err := s.recv(conn); err != nil {
+				log.Printf("Server recv error: %v", err)
+			}
+		}()
+	}
+}
+
+func (s *Server) recv(conn net.Conn) error {
 	// 读取请求（暂时简化）
 	buf := make([]byte, 1024)
 	n, _ := conn.Read(buf)
@@ -71,7 +82,7 @@ func (s *Server) Start() error {
 	resp, _ := json.Marshal(reply)
 	conn.Write(resp)
 	conn.Close()
-	return err
+	return nil
 }
 
 func (s *Server) call(args []byte, serviceName string, methodName string) (any, error) {
