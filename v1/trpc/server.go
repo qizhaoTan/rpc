@@ -54,8 +54,11 @@ func (s *Server) Start() error {
 	n, _ := conn.Read(buf)
 	buf = buf[:n]
 
+	var a Apply
+	json.Unmarshal(buf, &a)
+
 	var apply pb.ApplyHello
-	json.Unmarshal(buf, &apply)
+	json.Unmarshal(a.Args, &apply)
 
 	reply := &pb.ReplyHello{Msg: fmt.Sprintf("Hello, %s!", apply.Name)}
 	resp, _ := json.Marshal(reply)

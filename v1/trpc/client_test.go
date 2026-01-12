@@ -204,9 +204,11 @@ func mockHelloHandle(conn net.Conn) {
 	n, _ := conn.Read(buf)
 	buf = buf[:n]
 
-	var apply pb.ApplyHello
-	json.Unmarshal(buf, &apply)
+	var a Apply
+	json.Unmarshal(buf, &a)
 
+	var apply pb.ApplyHello
+	json.Unmarshal(a.Args, &apply)
 	reply := &pb.ReplyHello{Msg: fmt.Sprintf("Hello, %s!", apply.Name)}
 	resp, _ := json.Marshal(reply)
 	conn.Write(resp)

@@ -45,7 +45,7 @@ func (c *Client) Invoke(ctx context.Context, method string, args any, reply any)
 		return errors.New("空请求")
 	}
 
-	data, _ := json.Marshal(args)
+	data := NewApply(method, args)
 	if _, err := c.conn.Write(data); err != nil {
 		return err
 	}
