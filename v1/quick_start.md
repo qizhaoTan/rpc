@@ -14,3 +14,4 @@
 ## 完善RPC框架
 1. 新增Apply结构
 2. 在传输的时候不再传输原结构，而是先转成Apply，再传输
+3. server接收到数据，通过反射找到对应的service调用其method

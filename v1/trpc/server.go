@@ -1,11 +1,12 @@
 package trpc
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
-	"v1/pb"
+	"reflect"
 )
 
 type Server struct {
@@ -55,12 +56,50 @@ func (s *Server) Start() error {
 	buf = buf[:n]
 
 	var a Apply
-	json.Unmarshal(buf, &a)
+	if err := json.Unmarshal(buf, &a); err != nil {
+		return err
+	}
 
-	var apply pb.ApplyHello
-	json.Unmarshal(a.Args, &apply)
+	if len(a.Args) <= 0 {
+		return errors.New("没有传参数")
+	}
 
-	reply := &pb.ReplyHello{Msg: fmt.Sprintf("Hello, %s!", apply.Name)}
+	service, ok := s.services[a.ServiceName]
+	if !ok {
+		return fmt.Errorf("不存在service:%s", a.ServiceName)
+	}
+
+	serviceValue := reflect.ValueOf(service)
+	method := serviceValue.MethodByName(a.MethodName)
+	if !method.IsValid() {
+		return fmt.Errorf("service:%s 不存在method:%s", a.ServiceName, a.MethodName)
+	}
+
+	ctx := context.Background()
+	// 通过反射获取方法的第二个参数类型，New出来，并通过json.Unmarshal给参数赋值
+	// 约定方法签名为：func(ctx context.Context, req *ReqType) (resp any, err error)
+	methodType := method.Type()
+	if methodType.NumIn() != 2 {
+		return fmt.Errorf("service:%s method:%s 参数数量不正确", a.ServiceName, a.MethodName)
+	}
+
+	// 第二个参数类型（通常是 *ReqType）
+	apply := reflect.New(methodType.In(1).Elem())
+	if err := json.Unmarshal(a.Args, apply.Interface()); err != nil {
+		return err
+	}
+
+	args := []reflect.Value{reflect.ValueOf(ctx), apply}
+	results := method.Call(args)
+	if len(results) != 2 {
+		return fmt.Errorf("service:%s method:%s Call Failed", a.ServiceName, a.MethodName)
+	}
+
+	if err, ok := results[1].Interface().(error); ok && err != nil {
+		return err
+	}
+
+	reply := results[0].Interface()
 	resp, _ := json.Marshal(reply)
 	conn.Write(resp)
 	conn.Close()

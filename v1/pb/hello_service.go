@@ -57,7 +57,7 @@ func (s *HelloClient) Name() string {
 }
 
 func RegisterHelloServer(server ServiceRegistrar, service IHelloService) {
-	server.RegisterService("Hello", service)
+	server.RegisterService("hello_service", service)
 }
 
 type IHelloService interface {
