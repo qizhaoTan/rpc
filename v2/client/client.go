@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 	"time"
 	"v2/pb"
 	"v2/trpc"
@@ -17,18 +16,34 @@ func main() {
 	}
 	defer client.Close()
 
+	user := getUser(client, 1)
+	sayHello(client, user.Name)
+}
+
+func getUser(client *trpc.Client, uid int64) *pb.User {
+	// 创建 User 客户端
+	c := pb.NewUserClient(client)
+
+	// 设置超时上下文
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := c.User(ctx, &pb.ApplyUser{Uid: uid})
+	if err != nil {
+		log.Fatalf("调用 User 方法失败: %v", err)
+	}
+
+	log.Printf("服务器响应: %+v", r.User)
+	return r.User
+}
+
+func sayHello(client *trpc.Client, name string) {
 	// 创建 Hello 客户端
 	c := pb.NewHelloClient(client)
 
 	// 设置超时上下文
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-
-	// 调用 Hello 方法
-	name := "World"
-	if len(os.Args) > 1 {
-		name = os.Args[1]
-	}
 
 	r, err := c.Hello(ctx, &pb.ApplyHello{Name: name})
 	if err != nil {

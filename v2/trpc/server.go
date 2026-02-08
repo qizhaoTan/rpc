@@ -53,8 +53,16 @@ func (s *Server) Start() error {
 		}
 
 		go func() {
-			if err := s.recv(conn); err != nil {
-				log.Printf("Server recv error: %v", err)
+			log.Printf("新连接进来 localAddr %s remoteAddr %s\n", conn.LocalAddr(), conn.RemoteAddr())
+			defer func() {
+				log.Printf("连接断开 localAddr %s remoteAddr %s\n", conn.LocalAddr(), conn.RemoteAddr())
+				conn.Close()
+			}()
+			for {
+				if err := s.recv(conn); err != nil {
+					log.Printf("Server recv error: %v", err)
+					return
+				}
 			}
 		}()
 	}
@@ -63,7 +71,10 @@ func (s *Server) Start() error {
 func (s *Server) recv(conn net.Conn) error {
 	// 读取请求（暂时简化）
 	buf := make([]byte, 1024)
-	n, _ := conn.Read(buf)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return err
+	}
 	buf = buf[:n]
 
 	var a Apply
@@ -81,7 +92,6 @@ func (s *Server) recv(conn net.Conn) error {
 
 	resp, _ := json.Marshal(reply)
 	conn.Write(resp)
-	conn.Close()
 	return nil
 }
 
